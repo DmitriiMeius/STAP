@@ -1,0 +1,8 @@
+pymupdf
+python-docx
+openpyxl
+beautifulsoup4
+ebooklib
+striprtf
+charset-normalizer
+pandas

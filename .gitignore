@@ -1,0 +1,25 @@
+# Build artifacts
+build/
+dist/
+*.spec.bak
+
+# Local user data
+input/
+output/
+reports/
+
+# Bundled external binaries
+Tesseract-OCR/
+
+# Python cache and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Local OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
