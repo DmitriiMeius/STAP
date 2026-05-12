@@ -105,7 +105,7 @@ python -m PyInstaller --noconfirm STAP.spec
 The generated application will be placed under:
 
 ```text
-dist\STAP\STAP.exe
+dist\STAP_v0.4.0\STAP_v0.4.0.exe
 ```
 
 ## Repository
