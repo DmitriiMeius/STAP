@@ -24,6 +24,7 @@ Goal: make the first useful research reports.
 - N-grams and repeated formulas.
 - Sentiment and stance markers.
 - Concept dynamics across corpus segments.
+- Multilingual explanations.
 
 Status: active in `analysis_layers.py`.
 
@@ -84,3 +85,5 @@ Each generated insight should include:
 - N-gram and Formula Analysis: repeated two-word and three-word patterns.
 - Sentiment and Stance Marker Analysis: evaluative, critical, uncertain, and normative markers.
 - Concept Dynamics Analysis: segment-by-segment vocabulary and stance changes.
+- Multilingual UI and report explanations: English, Russian, Spanish.
+- Dark hacker-style desktop UI.

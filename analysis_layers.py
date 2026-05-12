@@ -305,11 +305,11 @@ def build_readability_profile(analyses: list[FileAnalysis]) -> ReadabilityProfil
     long_sentence_count = sum(1 for length in sentence_lengths if length >= 30)
     long_sentence_share = (long_sentence_count / len(sentence_lengths)) if sentence_lengths else 0.0
     if average_sentence_words >= 30:
-        interpretation = "Dense academic prose: long sentence chains require close reading."
+        interpretation = "dense"
     elif average_sentence_words >= 18:
-        interpretation = "Moderately complex prose: suitable for concept and argument tracking."
+        interpretation = "moderate"
     else:
-        interpretation = "Compact prose: ideas are likely split into shorter units."
+        interpretation = "compact"
     return ReadabilityProfile(
         average_sentence_words=average_sentence_words,
         average_word_length=average_word_length,
@@ -348,12 +348,12 @@ def build_sentiment_profile(text: str) -> SentimentProfile:
     uncertainty = sum(counts[term] for term in UNCERTAINTY_MARKERS)
     authority = sum(counts[term] for term in AUTHORITY_MARKERS)
     tone_scores = {
-        "positive/evaluative": positive,
-        "negative/critical": negative,
-        "uncertain/questioning": uncertainty,
-        "normative/authoritative": authority,
+        "positive": positive,
+        "negative": negative,
+        "uncertain": uncertainty,
+        "normative": authority,
     }
-    dominant = max(tone_scores.items(), key=lambda item: item[1])[0] if any(tone_scores.values()) else "neutral/undetected"
+    dominant = max(tone_scores.items(), key=lambda item: item[1])[0] if any(tone_scores.values()) else "neutral"
     return SentimentProfile(
         positive_markers=positive,
         negative_markers=negative,
@@ -403,75 +403,290 @@ def build_analysis_bundle(analyses: list[FileAnalysis]) -> AnalysisBundle:
     )
 
 
-def format_evidence_report(bundle: AnalysisBundle) -> str:
+REPORT_TEXT = {
+    "en": {
+        "analysis_map": "Analysis Map",
+        "included": "What is included and why:",
+        "cleaning": "Corpus Cleaning: removes contamination before interpretation.",
+        "descriptive": "Descriptive Metrics: shows size, density, and basic structure of the clean corpus.",
+        "lexical": "Lexical Diversity: estimates vocabulary breadth and repetition.",
+        "readability": "Readability/Complexity: detects dense sentences that affect interpretation.",
+        "ngram": "N-gram Analysis: finds repeated multi-word formulas, not just isolated words.",
+        "sentiment": "Sentiment/Stance Markers: detects evaluative, critical, uncertain, and normative language.",
+        "dynamics": "Concept Dynamics: shows how dominant terms change from beginning to end.",
+        "semantic": "Semantic Analysis: finds concept-heavy paragraphs using local TF-IDF similarity.",
+        "citation": "Citation & Evidence: ties concepts to exact sentences.",
+        "graph": "Knowledge Graph: maps terms that repeatedly appear together.",
+        "lexical_title": "Lexical Diversity Analysis",
+        "lexical_why": "Why: a high diversity score suggests broad vocabulary; a low score suggests repetition or formulaic language.",
+        "total_terms": "Total analysis terms",
+        "unique_terms": "Unique analysis terms",
+        "ttr": "Type-token ratio",
+        "hapax": "Hapax legomena",
+        "readability_title": "Readability and Complexity Analysis",
+        "readability_why": "Why: sentence length and word length help identify dense argumentation and difficult passages.",
+        "avg_sentence": "Average sentence length",
+        "avg_word": "Average word length",
+        "long_sentences": "Long sentences",
+        "interpretation": "Interpretation",
+        "interp_dense": "Dense academic prose: long sentence chains require close reading.",
+        "interp_moderate": "Moderately complex prose: suitable for concept and argument tracking.",
+        "interp_compact": "Compact prose: ideas are likely split into shorter units.",
+        "ngram_title": "N-gram and Formula Analysis",
+        "ngram_why": "Why: repeated two-word and three-word phrases often reveal stable formulas, slogans, terms, or conceptual pairs.",
+        "bigrams": "Top bigrams:",
+        "trigrams": "Top trigrams:",
+        "sentiment_title": "Sentiment and Stance Marker Analysis",
+        "sentiment_why": "Why: this does not replace interpretation; it flags where evaluative, critical, uncertain, or normative language is concentrated.",
+        "positive": "Positive/evaluative markers",
+        "negative": "Negative/critical markers",
+        "uncertainty": "Uncertainty markers",
+        "authority": "Authority/normative markers",
+        "dominant": "Dominant detected tone",
+        "tone_positive": "positive/evaluative",
+        "tone_negative": "negative/critical",
+        "tone_uncertain": "uncertain/questioning",
+        "tone_normative": "normative/authoritative",
+        "tone_neutral": "neutral/undetected",
+        "dynamics_title": "Concept Dynamics Analysis",
+        "dynamics_why": "Why: dividing the corpus into segments shows whether the author's vocabulary and stance change over the text.",
+        "segment": "Segment",
+        "tone": "tone",
+        "semantic_title": "Semantic Analysis Engine",
+        "semantic_why": "Why: identifies dominant concepts across the clean corpus and prepares the evidence layer.",
+        "key_concepts": "Key concepts:",
+        "citation_title": "Citation & Evidence Engine",
+        "citation_why": "Why: each concept is linked to exact sentences so conclusions can be checked against the source.",
+        "sentence": "sentence",
+        "score": "score",
+        "paragraph_title": "Semantic Paragraph Matching",
+        "paragraph_why": "Why: finds paragraphs closest to the dominant concept set using deterministic TF-IDF, without hallucinated summaries.",
+        "paragraph": "paragraph",
+        "terms": "terms",
+        "graph_title": "Knowledge Graph Engine",
+        "graph_why": "Why: co-occurrence edges show which concepts appear together in the same sentence and may form stable relationships.",
+        "cooccurrences": "Top co-occurrences:",
+        "no_edges": "No concept co-occurrences found.",
+        "words": "words",
+        "chars": "characters",
+    },
+    "ru": {
+        "analysis_map": "Карта анализа",
+        "included": "Что включено и зачем:",
+        "cleaning": "Очистка корпуса: удаляет загрязнение до интерпретации.",
+        "descriptive": "Описательные метрики: показывают размер, плотность и базовую структуру чистого корпуса.",
+        "lexical": "Лексическое разнообразие: оценивает широту словаря и повторяемость.",
+        "readability": "Читаемость/сложность: выявляет плотные предложения, влияющие на интерпретацию.",
+        "ngram": "N-граммы: находят повторяющиеся многословные формулы, а не только отдельные слова.",
+        "sentiment": "Маркеры оценки и позиции: выявляют оценочный, критический, неопределенный и нормативный язык.",
+        "dynamics": "Динамика концептов: показывает, как ключевые термины меняются от начала к концу.",
+        "semantic": "Семантический анализ: находит концептуально насыщенные абзацы через локальный TF-IDF.",
+        "citation": "Цитаты и доказательства: связывает концепты с точными предложениями.",
+        "graph": "Граф знаний: показывает термины, которые регулярно встречаются вместе.",
+        "lexical_title": "Анализ лексического разнообразия",
+        "lexical_why": "Зачем: высокий показатель говорит о широком словаре; низкий - о повторяемости или формульности.",
+        "total_terms": "Всего аналитических терминов",
+        "unique_terms": "Уникальных аналитических терминов",
+        "ttr": "Коэффициент type-token",
+        "hapax": "Hapax legomena",
+        "readability_title": "Анализ читаемости и сложности",
+        "readability_why": "Зачем: длина предложений и слов помогает находить плотную аргументацию и трудные места.",
+        "avg_sentence": "Средняя длина предложения",
+        "avg_word": "Средняя длина слова",
+        "long_sentences": "Длинные предложения",
+        "interpretation": "Интерпретация",
+        "interp_dense": "Плотная академическая проза: длинные цепочки предложений требуют внимательного чтения.",
+        "interp_moderate": "Умеренно сложная проза: подходит для отслеживания концептов и аргументов.",
+        "interp_compact": "Компактная проза: идеи, вероятно, разбиты на короткие смысловые единицы.",
+        "ngram_title": "Анализ n-грамм и формул",
+        "ngram_why": "Зачем: повторяющиеся двух- и трехсловные фразы выявляют устойчивые формулы, лозунги, термины или пары понятий.",
+        "bigrams": "Топ биграмм:",
+        "trigrams": "Топ триграмм:",
+        "sentiment_title": "Анализ маркеров оценки и позиции",
+        "sentiment_why": "Зачем: это не заменяет интерпретацию, но показывает концентрацию оценочного, критического, неопределенного или нормативного языка.",
+        "positive": "Позитивные/оценочные маркеры",
+        "negative": "Негативные/критические маркеры",
+        "uncertainty": "Маркеры неопределенности",
+        "authority": "Нормативные/авторитетные маркеры",
+        "dominant": "Доминирующий обнаруженный тон",
+        "tone_positive": "позитивный/оценочный",
+        "tone_negative": "негативный/критический",
+        "tone_uncertain": "неопределенный/вопросительный",
+        "tone_normative": "нормативный/авторитетный",
+        "tone_neutral": "нейтральный/не обнаружен",
+        "dynamics_title": "Анализ динамики концептов",
+        "dynamics_why": "Зачем: деление корпуса на сегменты показывает, меняются ли словарь и позиция автора по ходу текста.",
+        "segment": "Сегмент",
+        "tone": "тон",
+        "semantic_title": "Движок семантического анализа",
+        "semantic_why": "Зачем: выявляет доминирующие концепты в чистом корпусе и готовит слой доказательств.",
+        "key_concepts": "Ключевые концепты:",
+        "citation_title": "Движок цитат и доказательств",
+        "citation_why": "Зачем: каждый концепт связан с точными предложениями, чтобы выводы можно было проверить по источнику.",
+        "sentence": "предложение",
+        "score": "оценка",
+        "paragraph_title": "Семантическое сопоставление абзацев",
+        "paragraph_why": "Зачем: находит абзацы, ближайшие к набору доминирующих концептов, через детерминированный TF-IDF без выдуманных summary.",
+        "paragraph": "абзац",
+        "terms": "термины",
+        "graph_title": "Движок графа знаний",
+        "graph_why": "Зачем: ребра совместной встречаемости показывают, какие концепты появляются в одном предложении и могут образовывать устойчивые связи.",
+        "cooccurrences": "Топ совместных встречаемостей:",
+        "no_edges": "Совместные встречаемости концептов не найдены.",
+        "words": "слов",
+        "chars": "символов",
+    },
+    "es": {
+        "analysis_map": "Mapa de análisis",
+        "included": "Qué incluye y para qué sirve:",
+        "cleaning": "Limpieza del corpus: elimina contaminación antes de la interpretación.",
+        "descriptive": "Métricas descriptivas: muestran tamaño, densidad y estructura básica del corpus limpio.",
+        "lexical": "Diversidad léxica: estima amplitud de vocabulario y repetición.",
+        "readability": "Legibilidad/complejidad: detecta oraciones densas que afectan la interpretación.",
+        "ngram": "Análisis de n-gramas: encuentra fórmulas de varias palabras, no solo palabras aisladas.",
+        "sentiment": "Marcadores de tono y postura: detecta lenguaje evaluativo, crítico, incierto y normativo.",
+        "dynamics": "Dinámica de conceptos: muestra cómo cambian los términos dominantes del inicio al final.",
+        "semantic": "Análisis semántico: encuentra párrafos conceptualmente densos con TF-IDF local.",
+        "citation": "Citas y evidencia: vincula conceptos con oraciones exactas.",
+        "graph": "Grafo de conocimiento: mapea términos que aparecen juntos repetidamente.",
+        "lexical_title": "Análisis de diversidad léxica",
+        "lexical_why": "Para qué: una diversidad alta sugiere vocabulario amplio; una baja sugiere repetición o lenguaje formulaico.",
+        "total_terms": "Términos analíticos totales",
+        "unique_terms": "Términos analíticos únicos",
+        "ttr": "Relación type-token",
+        "hapax": "Hapax legomena",
+        "readability_title": "Análisis de legibilidad y complejidad",
+        "readability_why": "Para qué: la longitud de oraciones y palabras ayuda a identificar argumentación densa y pasajes difíciles.",
+        "avg_sentence": "Longitud media de oración",
+        "avg_word": "Longitud media de palabra",
+        "long_sentences": "Oraciones largas",
+        "interpretation": "Interpretación",
+        "interp_dense": "Prosa académica densa: las cadenas largas de oraciones requieren lectura cuidadosa.",
+        "interp_moderate": "Prosa moderadamente compleja: adecuada para rastrear conceptos y argumentos.",
+        "interp_compact": "Prosa compacta: las ideas probablemente están divididas en unidades breves.",
+        "ngram_title": "Análisis de n-gramas y fórmulas",
+        "ngram_why": "Para qué: las frases repetidas de dos y tres palabras revelan fórmulas, lemas, términos o pares conceptuales.",
+        "bigrams": "Bigramas principales:",
+        "trigrams": "Trigramas principales:",
+        "sentiment_title": "Análisis de marcadores de tono y postura",
+        "sentiment_why": "Para qué: no reemplaza la interpretación; señala dónde se concentra lenguaje evaluativo, crítico, incierto o normativo.",
+        "positive": "Marcadores positivos/evaluativos",
+        "negative": "Marcadores negativos/críticos",
+        "uncertainty": "Marcadores de incertidumbre",
+        "authority": "Marcadores normativos/de autoridad",
+        "dominant": "Tono dominante detectado",
+        "tone_positive": "positivo/evaluativo",
+        "tone_negative": "negativo/crítico",
+        "tone_uncertain": "incierto/interrogativo",
+        "tone_normative": "normativo/de autoridad",
+        "tone_neutral": "neutral/no detectado",
+        "dynamics_title": "Análisis de dinámica conceptual",
+        "dynamics_why": "Para qué: dividir el corpus en segmentos muestra si el vocabulario y la postura cambian durante el texto.",
+        "segment": "Segmento",
+        "tone": "tono",
+        "semantic_title": "Motor de análisis semántico",
+        "semantic_why": "Para qué: identifica conceptos dominantes en el corpus limpio y prepara la capa de evidencia.",
+        "key_concepts": "Conceptos clave:",
+        "citation_title": "Motor de citas y evidencia",
+        "citation_why": "Para qué: cada concepto se vincula con oraciones exactas para verificar conclusiones contra la fuente.",
+        "sentence": "oración",
+        "score": "puntaje",
+        "paragraph_title": "Coincidencia semántica de párrafos",
+        "paragraph_why": "Para qué: encuentra párrafos cercanos al conjunto de conceptos dominantes usando TF-IDF determinista, sin resúmenes inventados.",
+        "paragraph": "párrafo",
+        "terms": "términos",
+        "graph_title": "Motor de grafo de conocimiento",
+        "graph_why": "Para qué: las aristas de coocurrencia muestran qué conceptos aparecen juntos y pueden formar relaciones estables.",
+        "cooccurrences": "Coocurrencias principales:",
+        "no_edges": "No se encontraron coocurrencias de conceptos.",
+        "words": "palabras",
+        "chars": "caracteres",
+    },
+}
+
+
+def report_text(language: str, key: str) -> str:
+    return REPORT_TEXT.get(language, REPORT_TEXT["en"]).get(key, REPORT_TEXT["en"].get(key, key))
+
+
+def tone_label(tone: str, language: str) -> str:
+    return report_text(language, f"tone_{tone}")
+
+
+def interpretation_label(code: str, language: str) -> str:
+    return report_text(language, f"interp_{code}")
+
+
+def format_evidence_report(bundle: AnalysisBundle, language: str = "en") -> str:
+    t = lambda key: report_text(language, key)
     lines = [
-        "Analysis Map",
+        t("analysis_map"),
         "=" * 60,
-        "What is included and why:",
-        "- Corpus Cleaning: removes contamination before interpretation.",
-        "- Descriptive Metrics: shows size, density, and basic structure of the clean corpus.",
-        "- Lexical Diversity: estimates vocabulary breadth and repetition.",
-        "- Readability/Complexity: detects dense sentences that affect interpretation.",
-        "- N-gram Analysis: finds repeated multi-word formulas, not just isolated words.",
-        "- Sentiment/Stance Markers: detects evaluative, critical, uncertain, and normative language.",
-        "- Concept Dynamics: shows how dominant terms change from beginning to end.",
-        "- Semantic Analysis: finds concept-heavy paragraphs using local TF-IDF similarity.",
-        "- Citation & Evidence: ties concepts to exact sentences.",
-        "- Knowledge Graph: maps terms that repeatedly appear together.",
+        t("included"),
+        f"- {t('cleaning')}",
+        f"- {t('descriptive')}",
+        f"- {t('lexical')}",
+        f"- {t('readability')}",
+        f"- {t('ngram')}",
+        f"- {t('sentiment')}",
+        f"- {t('dynamics')}",
+        f"- {t('semantic')}",
+        f"- {t('citation')}",
+        f"- {t('graph')}",
         "",
-        "Lexical Diversity Analysis",
+        t("lexical_title"),
         "=" * 60,
-        "Why: a high diversity score suggests broad vocabulary; a low score suggests repetition or formulaic language.",
-        f"Total analysis terms: {bundle.lexical_diversity.total_terms}",
-        f"Unique analysis terms: {bundle.lexical_diversity.unique_terms}",
-        f"Type-token ratio: {bundle.lexical_diversity.type_token_ratio:.3f}",
-        f"Hapax legomena: {bundle.lexical_diversity.hapax_legomena} ({bundle.lexical_diversity.hapax_share:.1%} of unique terms)",
+        t("lexical_why"),
+        f"{t('total_terms')}: {bundle.lexical_diversity.total_terms}",
+        f"{t('unique_terms')}: {bundle.lexical_diversity.unique_terms}",
+        f"{t('ttr')}: {bundle.lexical_diversity.type_token_ratio:.3f}",
+        f"{t('hapax')}: {bundle.lexical_diversity.hapax_legomena} ({bundle.lexical_diversity.hapax_share:.1%})",
         "",
-        "Readability and Complexity Analysis",
+        t("readability_title"),
         "=" * 60,
-        "Why: sentence length and word length help identify dense argumentation and difficult passages.",
-        f"Average sentence length: {bundle.readability.average_sentence_words:.2f} words",
-        f"Average word length: {bundle.readability.average_word_length:.2f} characters",
-        f"Long sentences: {bundle.readability.long_sentence_count} ({bundle.readability.long_sentence_share:.1%})",
-        f"Interpretation: {bundle.readability.interpretation}",
+        t("readability_why"),
+        f"{t('avg_sentence')}: {bundle.readability.average_sentence_words:.2f} {t('words')}",
+        f"{t('avg_word')}: {bundle.readability.average_word_length:.2f} {t('chars')}",
+        f"{t('long_sentences')}: {bundle.readability.long_sentence_count} ({bundle.readability.long_sentence_share:.1%})",
+        f"{t('interpretation')}: {interpretation_label(bundle.readability.interpretation, language)}",
         "",
-        "N-gram and Formula Analysis",
+        t("ngram_title"),
         "=" * 60,
-        "Why: repeated two-word and three-word phrases often reveal stable formulas, slogans, terms, or conceptual pairs.",
-        "Top bigrams:",
+        t("ngram_why"),
+        t("bigrams"),
     ]
     lines.extend(f"- {item.phrase}: {item.count}" for item in bundle.bigrams[:15])
-    lines.append("Top trigrams:")
+    lines.append(t("trigrams"))
     lines.extend(f"- {item.phrase}: {item.count}" for item in bundle.trigrams[:15])
 
     lines.extend([
         "",
-        "Sentiment and Stance Marker Analysis",
+        t("sentiment_title"),
         "=" * 60,
-        "Why: this does not replace interpretation; it flags where evaluative, critical, uncertain, or normative language is concentrated.",
-        f"Positive/evaluative markers: {bundle.sentiment.positive_markers}",
-        f"Negative/critical markers: {bundle.sentiment.negative_markers}",
-        f"Uncertainty markers: {bundle.sentiment.uncertainty_markers}",
-        f"Authority/normative markers: {bundle.sentiment.authority_markers}",
-        f"Dominant detected tone: {bundle.sentiment.dominant_tone}",
+        t("sentiment_why"),
+        f"{t('positive')}: {bundle.sentiment.positive_markers}",
+        f"{t('negative')}: {bundle.sentiment.negative_markers}",
+        f"{t('uncertainty')}: {bundle.sentiment.uncertainty_markers}",
+        f"{t('authority')}: {bundle.sentiment.authority_markers}",
+        f"{t('dominant')}: {tone_label(bundle.sentiment.dominant_tone, language)}",
         "",
-        "Concept Dynamics Analysis",
+        t("dynamics_title"),
         "=" * 60,
-        "Why: dividing the corpus into segments shows whether the author's vocabulary and stance change over the text.",
+        t("dynamics_why"),
     ])
     for segment in bundle.dynamics:
         terms = ", ".join(f"{term}:{count}" for term, count in segment.top_terms)
         lines.append(
-            f"- Segment {segment.segment} ({segment.start_percent}-{segment.end_percent}%): "
-            f"{terms}; tone={segment.sentiment.dominant_tone}"
+            f"- {t('segment')} {segment.segment} ({segment.start_percent}-{segment.end_percent}%): "
+            f"{terms}; {t('tone')}={tone_label(segment.sentiment.dominant_tone, language)}"
         )
 
     lines.extend([
         "",
-        "Semantic Analysis Engine",
+        t("semantic_title"),
         "=" * 60,
-        "Why: identifies dominant concepts across the clean corpus and prepares the evidence layer.",
-        "Key concepts:",
+        t("semantic_why"),
+        t("key_concepts"),
     ])
     for concept in bundle.concepts[:20]:
         source_list = ", ".join(concept.sources[:4])
@@ -481,40 +696,40 @@ def format_evidence_report(bundle: AnalysisBundle) -> str:
 
     lines.extend([
         "",
-        "Citation & Evidence Engine",
+        t("citation_title"),
         "=" * 60,
-        "Why: each concept is linked to exact sentences so conclusions can be checked against the source.",
+        t("citation_why"),
     ])
     for concept in bundle.concepts[:12]:
         lines.append(f"{concept.term} ({concept.count})")
         for item in concept.evidence:
             lines.append(
-                f"- {item.source}, sentence {item.sentence_index}, score {item.score:.2f}: {item.text}"
+                f"- {item.source}, {t('sentence')} {item.sentence_index}, {t('score')} {item.score:.2f}: {item.text}"
             )
         lines.append("")
 
     lines.extend([
-        "Semantic Paragraph Matching",
+        t("paragraph_title"),
         "=" * 60,
-        "Why: finds paragraphs closest to the dominant concept set using deterministic TF-IDF, without hallucinated summaries.",
+        t("paragraph_why"),
     ])
     for item in bundle.semantic_matches:
         terms = ", ".join(item.top_terms[:6])
-        lines.append(f"- {item.source}, paragraph {item.paragraph_index}, score {item.score:.3f}, terms: {terms}")
+        lines.append(f"- {item.source}, {t('paragraph')} {item.paragraph_index}, {t('score')} {item.score:.3f}, {t('terms')}: {terms}")
         lines.append(f"  {item.text}")
 
     lines.extend([
         "",
-        "Knowledge Graph Engine",
+        t("graph_title"),
         "=" * 60,
-        "Why: co-occurrence edges show which concepts appear together in the same sentence and may form stable relationships.",
-        "Top co-occurrences:",
+        t("graph_why"),
+        t("cooccurrences"),
     ])
     if bundle.graph.edges:
         for edge in bundle.graph.edges[:30]:
             lines.append(f"- {edge.source} -> {edge.target}: {edge.weight}")
     else:
-        lines.append("- No concept co-occurrences found.")
+        lines.append(f"- {t('no_edges')}")
 
     return "\n".join(lines)
 

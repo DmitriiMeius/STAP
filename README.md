@@ -6,7 +6,7 @@ The project starts from a practical workflow: a source text is prepared by FileM
 
 ## Current Focus
 
-Version `0.3` focuses on the foundation:
+Version `0.4` focuses on the foundation:
 
 - load source text or documents;
 - extract text into a unified corpus;
@@ -22,6 +22,8 @@ Version `0.3` focuses on the foundation:
 - collect citation evidence for the strongest concepts;
 - find semantically relevant paragraphs with a local TF-IDF model;
 - build a concept co-occurrence knowledge graph;
+- use a dark hacker-style research interface;
+- switch interface and analysis explanations between English, Russian, and Spanish;
 - export a report, clean text, analysis JSON, and Graphviz DOT graph.
 
 ## Why Cleaning Comes First
@@ -55,6 +57,8 @@ source text
 - Sentiment and Stance Marker Analysis: flags evaluative, critical, uncertain, and normative vocabulary.
 - Concept Dynamics Analysis: divides the corpus into segments and shows how vocabulary changes through the text.
 - Scrollable interface for long evidence reports and large file lists.
+- Dark hacker-style UI with green terminal accents.
+- Multilingual UI and analysis explanations: English, Russian, Spanish.
 - Exports analysis reports, clean corpus text, analysis JSON, and knowledge graph DOT files.
 
 ## Run
@@ -75,6 +79,7 @@ run.bat
 - `main.py` - Tkinter desktop UI and the clean/analyze workflow.
 - `corpus_cleaner.py` - corpus cleaning rules and cleaning report generation.
 - `analysis_layers.py` - semantic, citation/evidence, NLP, and graph analysis layers.
+- `i18n.py` - interface localization dictionaries for English, Russian, and Spanish.
 - `text_core.py` - text extraction and basic metrics.
 - `docs/AI_talks.txt` - source notes that shaped the project direction.
 - `docs/roadmap.md` - staged development roadmap.
