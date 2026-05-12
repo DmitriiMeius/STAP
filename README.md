@@ -6,7 +6,7 @@ The project starts from a practical workflow: a source text is prepared by FileM
 
 ## Current Focus
 
-Version `0.1` focuses on the foundation:
+Version `0.2` focuses on the foundation:
 
 - load source text or documents;
 - extract text into a unified corpus;
@@ -14,7 +14,11 @@ Version `0.1` focuses on the foundation:
 - repair hyphenated line breaks from OCR or PDF extraction;
 - normalize whitespace;
 - analyze the cleaned corpus;
-- export a report and clean text.
+- extract key concepts;
+- collect citation evidence for the strongest concepts;
+- find semantically relevant paragraphs with a local TF-IDF model;
+- build a concept co-occurrence knowledge graph;
+- export a report, clean text, analysis JSON, and Graphviz DOT graph.
 
 ## Why Cleaning Comes First
 
@@ -38,7 +42,10 @@ source text
 - Counts characters, words, unique words, sentences, paragraphs, average word length, and average sentence length.
 - Shows top frequent words after stop-word filtering.
 - Reports removed fragments and applied transformations.
-- Exports analysis reports and clean corpus text.
+- Semantic Analysis Engine: extracts concepts and relevant paragraphs using deterministic local NLP.
+- Citation & Evidence Engine: links key concepts to exact sentence-level evidence.
+- Knowledge Graph Engine: builds concept co-occurrence edges that can be exported as Graphviz DOT.
+- Exports analysis reports, clean corpus text, analysis JSON, and knowledge graph DOT files.
 
 ## Run
 
@@ -57,6 +64,7 @@ run.bat
 
 - `main.py` - Tkinter desktop UI and the clean/analyze workflow.
 - `corpus_cleaner.py` - corpus cleaning rules and cleaning report generation.
+- `analysis_layers.py` - semantic, citation/evidence, NLP, and graph analysis layers.
 - `text_core.py` - text extraction and basic metrics.
 - `docs/AI_talks.txt` - source notes that shaped the project direction.
 - `docs/roadmap.md` - staged development roadmap.
@@ -64,12 +72,25 @@ run.bat
 
 ## Roadmap
 
-1. Corpus Cleaning Engine
-2. Basic frequency and citation analysis
-3. Corpus JSON export with paragraph/chapter structure
-4. Semantic search and embeddings
-5. Concept tracking and author comparison
-6. Evidence-first research reports
+1. Corpus Cleaning Engine - implemented as the first layer.
+2. Basic frequency and citation analysis - implemented with deterministic local rules.
+3. Semantic Analysis Engine - initial TF-IDF implementation is active.
+4. Knowledge Graph Engine - initial concept co-occurrence graph is active.
+5. Corpus JSON export with paragraph/chapter structure.
+6. Embeddings, semantic search index, and author comparison.
+7. Evidence-first research reports.
+
+## Build Windows EXE
+
+```bat
+python -m PyInstaller --noconfirm STAP.spec
+```
+
+The generated application will be placed under:
+
+```text
+dist\STAP\STAP.exe
+```
 
 ## Repository
 

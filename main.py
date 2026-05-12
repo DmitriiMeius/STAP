@@ -7,6 +7,13 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from analysis_layers import (
+    AnalysisBundle,
+    build_analysis_bundle,
+    export_analysis_json,
+    export_graph_dot,
+    format_evidence_report,
+)
 from corpus_cleaner import CleaningResult, clean_corpus_text, format_cleaning_report
 from text_core import (
     SUPPORTED_EXTENSIONS,
@@ -20,7 +27,7 @@ from text_core import (
 
 
 APP_NAME = "STAP"
-APP_VERSION = "v0.1.0"
+APP_VERSION = "v0.2.0"
 APP_FULL_NAME = "Scientific Text Analysis Platform"
 
 
@@ -34,6 +41,7 @@ class STAPApp:
         self.files: list[Path] = []
         self.analyses: list[FileAnalysis] = []
         self.cleaning_results: dict[Path, CleaningResult] = {}
+        self.analysis_bundle: AnalysisBundle | None = None
         self.events: queue.Queue[tuple[str, object]] = queue.Queue()
         self.worker: threading.Thread | None = None
 
@@ -49,15 +57,17 @@ class STAPApp:
 
         toolbar = ttk.Frame(self.root, padding=(10, 10, 10, 6))
         toolbar.grid(row=0, column=0, sticky="ew")
-        toolbar.columnconfigure(6, weight=1)
+        toolbar.columnconfigure(8, weight=1)
 
         ttk.Button(toolbar, text="Select files", command=self.select_files).grid(row=0, column=0, padx=(0, 6))
         ttk.Button(toolbar, text="Clean + Analyze", command=self.start_analysis).grid(row=0, column=1, padx=6)
         ttk.Button(toolbar, text="Export report", command=self.export_report).grid(row=0, column=2, padx=6)
         ttk.Button(toolbar, text="Export clean text", command=self.export_clean_text).grid(row=0, column=3, padx=6)
-        ttk.Button(toolbar, text="Clear", command=self.clear).grid(row=0, column=4, padx=6)
+        ttk.Button(toolbar, text="Export JSON", command=self.export_analysis_json).grid(row=0, column=4, padx=6)
+        ttk.Button(toolbar, text="Export graph", command=self.export_graph_dot).grid(row=0, column=5, padx=6)
+        ttk.Button(toolbar, text="Clear", command=self.clear).grid(row=0, column=6, padx=6)
 
-        ttk.Label(toolbar, textvariable=self.summary_var).grid(row=0, column=6, sticky="e")
+        ttk.Label(toolbar, textvariable=self.summary_var).grid(row=0, column=8, sticky="e")
 
         body = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
         body.grid(row=1, column=0, sticky="nsew", padx=10, pady=6)
@@ -101,6 +111,7 @@ class STAPApp:
         skipped = len(selected) - len(self.files)
         self.analyses = []
         self.cleaning_results = {}
+        self.analysis_bundle = None
         self._refresh_file_list()
         self.output.delete("1.0", tk.END)
         self.summary_var.set(f"Selected files: {len(self.files)}")
@@ -133,7 +144,8 @@ class STAPApp:
             except Exception as exc:  # noqa: BLE001 - GUI reports per-file failures.
                 self.events.put(("error", f"{path.name}: {exc}"))
 
-        self.events.put(("done", (analyses, cleaning_results)))
+        bundle = build_analysis_bundle(analyses) if analyses else None
+        self.events.put(("done", (analyses, cleaning_results, bundle)))
 
     def _poll_events(self) -> None:
         try:
@@ -144,9 +156,10 @@ class STAPApp:
                 elif kind == "error":
                     self.output.insert(tk.END, f"ERROR: {payload}\n\n")
                 elif kind == "done":
-                    analyses, cleaning_results = payload  # type: ignore[misc]
+                    analyses, cleaning_results, bundle = payload  # type: ignore[misc]
                     self.analyses = list(analyses)
                     self.cleaning_results = dict(cleaning_results)
+                    self.analysis_bundle = bundle
                     self.render_summary()
                     self.status_var.set(f"Corpus ready: {len(self.analyses)} file(s).")
         except queue.Empty:
@@ -170,6 +183,10 @@ class STAPApp:
         self.output.insert(tk.END, "-" * 60 + "\n")
         self.output.insert(tk.END, format_metrics(combined))
         self.output.insert(tk.END, "\n\n")
+
+        if self.analysis_bundle:
+            self.output.insert(tk.END, format_evidence_report(self.analysis_bundle))
+            self.output.insert(tk.END, "\n\n")
 
         for analysis in self.analyses:
             self.output.insert(tk.END, analysis.path.name + "\n")
@@ -197,6 +214,20 @@ class STAPApp:
         if cleaning_result:
             self.output.insert(tk.END, "\n\n")
             self.output.insert(tk.END, format_cleaning_report(cleaning_result))
+
+        if self.analysis_bundle:
+            related = [
+                concept
+                for concept in self.analysis_bundle.concepts
+                if any(item.source == analysis.path.name for item in concept.evidence)
+            ][:12]
+            self.output.insert(tk.END, "\n\nCitation & Evidence for this file\n")
+            self.output.insert(tk.END, "-" * 60 + "\n")
+            for concept in related:
+                self.output.insert(tk.END, f"{concept.term} ({concept.count})\n")
+                for item in concept.evidence:
+                    if item.source == analysis.path.name:
+                        self.output.insert(tk.END, f"- sentence {item.sentence_index}: {item.text}\n")
 
         self.output.insert(tk.END, "\n\nClean text preview\n")
         self.output.insert(tk.END, "-" * 60 + "\n")
@@ -242,10 +273,47 @@ class STAPApp:
         Path(path).write_text("\n\n".join(parts).strip() + "\n", encoding="utf-8")
         self.status_var.set(f"Clean corpus saved: {path}")
 
+    def export_analysis_json(self) -> None:
+        if not self.analysis_bundle:
+            messagebox.showinfo(APP_NAME, "Run cleaning and analysis first.")
+            return
+
+        default_name = f"stap_analysis_{datetime.now():%Y%m%d_%H%M%S}.json"
+        path = filedialog.asksaveasfilename(
+            title="Export STAP analysis JSON",
+            defaultextension=".json",
+            initialfile=default_name,
+            filetypes=[("Analysis JSON", "*.json"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+
+        export_analysis_json(self.analysis_bundle, Path(path))
+        self.status_var.set(f"Analysis JSON saved: {path}")
+
+    def export_graph_dot(self) -> None:
+        if not self.analysis_bundle:
+            messagebox.showinfo(APP_NAME, "Run cleaning and analysis first.")
+            return
+
+        default_name = f"stap_knowledge_graph_{datetime.now():%Y%m%d_%H%M%S}.dot"
+        path = filedialog.asksaveasfilename(
+            title="Export knowledge graph DOT",
+            defaultextension=".dot",
+            initialfile=default_name,
+            filetypes=[("Graphviz DOT", "*.dot"), ("All files", "*.*")],
+        )
+        if not path:
+            return
+
+        export_graph_dot(self.analysis_bundle.graph, Path(path))
+        self.status_var.set(f"Knowledge graph saved: {path}")
+
     def clear(self) -> None:
         self.files = []
         self.analyses = []
         self.cleaning_results = {}
+        self.analysis_bundle = None
         self.file_list.delete(0, tk.END)
         self.output.delete("1.0", tk.END)
         self.summary_var.set("No files selected.")

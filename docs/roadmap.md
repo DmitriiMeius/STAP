@@ -20,6 +20,8 @@ Goal: make the first useful research reports.
 - Quotation/context lookup.
 - Per-file and total corpus reports.
 
+Status: initial implementation is active in `analysis_layers.py`.
+
 ## Phase 3 - Structured Corpus
 
 Goal: move from flat text to research data.
@@ -43,11 +45,14 @@ Goal: move from flat text to research data.
 
 Goal: add meaning-aware tools without losing evidence.
 
+- Local TF-IDF paragraph matching.
 - Embeddings.
-- Semantic search.
+- Semantic search index.
 - Concept maps.
 - Author comparison.
 - Corpus-to-corpus comparison.
+
+Status: deterministic TF-IDF paragraph matching is implemented. Embeddings and vector databases are planned for later versions.
 
 ## Phase 5 - Scientific Mode
 
@@ -61,3 +66,11 @@ Each generated insight should include:
 - context;
 - cleaning assumptions;
 - reproducible method.
+
+## Current Engines
+
+- Corpus Cleaning Engine: deterministic cleanup of common contamination.
+- NLP Layer: tokenization, sentence extraction, concept counting, stop-word filtering.
+- Semantic Analysis Engine: local TF-IDF paragraph matching against dominant concepts.
+- Citation & Evidence Engine: sentence-level evidence records for each concept.
+- Knowledge Graph Engine: concept co-occurrence graph exportable as Graphviz DOT.
