@@ -19,8 +19,13 @@ Goal: make the first useful research reports.
 - Repeated concept detection.
 - Quotation/context lookup.
 - Per-file and total corpus reports.
+- Lexical diversity.
+- Readability and complexity.
+- N-grams and repeated formulas.
+- Sentiment and stance markers.
+- Concept dynamics across corpus segments.
 
-Status: initial implementation is active in `analysis_layers.py`.
+Status: active in `analysis_layers.py`.
 
 ## Phase 3 - Structured Corpus
 
@@ -74,3 +79,8 @@ Each generated insight should include:
 - Semantic Analysis Engine: local TF-IDF paragraph matching against dominant concepts.
 - Citation & Evidence Engine: sentence-level evidence records for each concept.
 - Knowledge Graph Engine: concept co-occurrence graph exportable as Graphviz DOT.
+- Lexical Diversity Analysis: vocabulary breadth and repetition.
+- Readability and Complexity Analysis: sentence and word density.
+- N-gram and Formula Analysis: repeated two-word and three-word patterns.
+- Sentiment and Stance Marker Analysis: evaluative, critical, uncertain, and normative markers.
+- Concept Dynamics Analysis: segment-by-segment vocabulary and stance changes.

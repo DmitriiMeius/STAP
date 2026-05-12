@@ -27,7 +27,7 @@ from text_core import (
 
 
 APP_NAME = "STAP"
-APP_VERSION = "v0.2.0"
+APP_VERSION = "v0.3.0"
 APP_FULL_NAME = "Scientific Text Analysis Platform"
 
 
@@ -80,15 +80,31 @@ class STAPApp:
         left.rowconfigure(1, weight=1)
         left.columnconfigure(0, weight=1)
         ttk.Label(left, text="Corpus files").grid(row=0, column=0, sticky="w")
-        self.file_list = tk.Listbox(left, height=12)
-        self.file_list.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
+        file_frame = ttk.Frame(left)
+        file_frame.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
+        file_frame.rowconfigure(0, weight=1)
+        file_frame.columnconfigure(0, weight=1)
+        self.file_list = tk.Listbox(file_frame, height=12)
+        file_scrollbar = ttk.Scrollbar(file_frame, orient=tk.VERTICAL, command=self.file_list.yview)
+        self.file_list.configure(yscrollcommand=file_scrollbar.set)
+        self.file_list.grid(row=0, column=0, sticky="nsew")
+        file_scrollbar.grid(row=0, column=1, sticky="ns")
         self.file_list.bind("<<ListboxSelect>>", lambda _event: self.show_selected_file())
 
         right.rowconfigure(1, weight=1)
         right.columnconfigure(0, weight=1)
         ttk.Label(right, text="Analysis and evidence").grid(row=0, column=0, sticky="w")
-        self.output = tk.Text(right, wrap="word", undo=False)
-        self.output.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
+        output_frame = ttk.Frame(right)
+        output_frame.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
+        output_frame.rowconfigure(0, weight=1)
+        output_frame.columnconfigure(0, weight=1)
+        self.output = tk.Text(output_frame, wrap="word", undo=False)
+        output_y = ttk.Scrollbar(output_frame, orient=tk.VERTICAL, command=self.output.yview)
+        output_x = ttk.Scrollbar(output_frame, orient=tk.HORIZONTAL, command=self.output.xview)
+        self.output.configure(yscrollcommand=output_y.set, xscrollcommand=output_x.set)
+        self.output.grid(row=0, column=0, sticky="nsew")
+        output_y.grid(row=0, column=1, sticky="ns")
+        output_x.grid(row=1, column=0, sticky="ew")
 
         status = ttk.Frame(self.root, padding=(10, 4, 10, 10))
         status.grid(row=2, column=0, sticky="ew")

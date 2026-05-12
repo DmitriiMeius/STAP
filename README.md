@@ -6,7 +6,7 @@ The project starts from a practical workflow: a source text is prepared by FileM
 
 ## Current Focus
 
-Version `0.2` focuses on the foundation:
+Version `0.3` focuses on the foundation:
 
 - load source text or documents;
 - extract text into a unified corpus;
@@ -15,6 +15,10 @@ Version `0.2` focuses on the foundation:
 - normalize whitespace;
 - analyze the cleaned corpus;
 - extract key concepts;
+- calculate lexical diversity and readability/complexity;
+- detect repeated bigrams and trigrams;
+- detect basic sentiment and stance markers;
+- track concept dynamics across the beginning, middle, and end of the corpus;
 - collect citation evidence for the strongest concepts;
 - find semantically relevant paragraphs with a local TF-IDF model;
 - build a concept co-occurrence knowledge graph;
@@ -45,6 +49,12 @@ source text
 - Semantic Analysis Engine: extracts concepts and relevant paragraphs using deterministic local NLP.
 - Citation & Evidence Engine: links key concepts to exact sentence-level evidence.
 - Knowledge Graph Engine: builds concept co-occurrence edges that can be exported as Graphviz DOT.
+- Lexical Diversity Analysis: estimates vocabulary breadth, repetition, and hapax legomena.
+- Readability and Complexity Analysis: flags dense argumentation through sentence and word length.
+- N-gram and Formula Analysis: finds repeated two-word and three-word expressions.
+- Sentiment and Stance Marker Analysis: flags evaluative, critical, uncertain, and normative vocabulary.
+- Concept Dynamics Analysis: divides the corpus into segments and shows how vocabulary changes through the text.
+- Scrollable interface for long evidence reports and large file lists.
 - Exports analysis reports, clean corpus text, analysis JSON, and knowledge graph DOT files.
 
 ## Run
@@ -76,9 +86,10 @@ run.bat
 2. Basic frequency and citation analysis - implemented with deterministic local rules.
 3. Semantic Analysis Engine - initial TF-IDF implementation is active.
 4. Knowledge Graph Engine - initial concept co-occurrence graph is active.
-5. Corpus JSON export with paragraph/chapter structure.
-6. Embeddings, semantic search index, and author comparison.
-7. Evidence-first research reports.
+5. Modern deterministic analysis suite - lexical diversity, readability, n-grams, stance markers, and dynamics are active.
+6. Corpus JSON export with paragraph/chapter structure.
+7. Embeddings, semantic search index, and author comparison.
+8. Evidence-first research reports.
 
 ## Build Windows EXE
 
