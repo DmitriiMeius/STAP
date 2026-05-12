@@ -139,7 +139,6 @@ class STAPApp:
             fg=THEME["fg"],
             selectbackground=THEME["select"],
             selectforeground=THEME["accent"],
-            insertbackground=THEME["accent"],
             highlightbackground=THEME["border"],
             highlightcolor=THEME["accent"],
             borderwidth=1,
